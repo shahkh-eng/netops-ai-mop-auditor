@@ -41,46 +41,9 @@ Over 70% of network outages occur during scheduled maintenance windows. Traditio
 ---
 ## System Architecture
 
-<div align="center">
-
-<pre>
-┌───────────────────────────────────────────────────────────────────┐
-│                  4-STAGE MAINTENANCE LIFECYCLE                    │
-└─────────────────────────────────┬─────────────────────────────────┘
-                                  │
-    ┌─────────────────────────────┴─────────────────────────────┐
-    │ 1. PRE-ACTIVITY BASELINE                                  │
-    │    Captures Running-Configs, OSPF, BGP & 1500B DF-Bit MTU │
-    └─────────────────────────────┬─────────────────────────────┘
-                                  │ [Clearance Unlocked]
-                                  ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │ 2. ENGINEER CHANGE WINDOW                                 │  ◄───► [GNS3 Cisco Lab]
-    │    Manual CLI in GNS3 Console or Simulation (Clean/Fault) │        (R1 / R2 / R3)
-    └─────────────────────────────┬─────────────────────────────┘
-                                  │ [Engineer Confirms Done]
-                                  ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │ 3. POST-CHECK & DIFF ENGINE                               │
-    │    Computes Exact Line Diffs & Health Comparison Matrix   │
-    └─────────────────────────────┬─────────────────────────────┘
-                                  │ [Deterministic Diffs]
-                                  ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │ 4. LOCAL LLAMA 3.2 AI AUDITOR                             │
-    │    Audits Scope Compliance & Decides Sign-Off vs Rollback │
-    └─────────────────────────────┬─────────────────────────────┘
-                                  │
-                                  ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │                    AUDIT DELIVERABLES                     │
-    │    • 3 Dashboard Panels (Matrix, Config Diff, AI Trace)   │
-    │    • Formatted 4-Tab Excel Workbook (.xlsx)               │
-    │    • Timestamped Markdown PIR Report (reports/pir_*.md)   │
-    └───────────────────────────────────────────────────────────┘
-</pre>
-
-</div>
+<p align="center">
+  <img src="docs/screenshots/architecture.png" alt="System Architecture" width="650">
+</p>
 
 ### Key Engineering Principles
 - **Anti-Hallucination Split Design:** Python deterministically handles all config diffing (`difflib`), BGP/OSPF parsing, and data-plane probing; **Llama 3.2** audits those verified deltas against the authorized MOP scope.
