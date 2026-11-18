@@ -40,21 +40,43 @@ Over 70% of network outages occur during scheduled maintenance windows. Traditio
 
 ---
 ## System Architecture
-```mermaid
-graph TD
-    A[Network Engineer or NOC UI] -->|1. Pre-Check| B[Flask Controller - app.py]
-    A -->|2. Manual GNS3 Edit or Simulation| C[GNS3 Cisco IOS Lab]
-    A -->|3. Confirm Changes| B
 
-    B --> D[Deterministic Engine - NAPALM and Netmiko]
-    D -->|Read-Only CLI| E[Zero-Trust Guardrails]
-    E -->|OOB Management 172.20.40.0/24| C
-
-    D -->|Diffs and Telemetry| F[Local Llama 3.2 Auditor]
-    F -->|Optional Live Verify| E
-    F -->|Verdict and Sign-Off| G[Excel xlsx and Markdown PIR]
+```text
+┌───────────────────────────────────────────────────────────────────┐
+│                  4-STAGE MAINTENANCE LIFECYCLE                    │
+└─────────────────────────────────┬─────────────────────────────────┘
+                                  │
+    ┌─────────────────────────────┴─────────────────────────────┐
+    │ 1. PRE-ACTIVITY BASELINE                                  │
+    │    Captures Running-Configs, OSPF, BGP & 1500B DF-Bit MTU │
+    └─────────────────────────────┬─────────────────────────────┘
+                                  │ [Clearance Unlocked]
+                                  ▼
+    ┌───────────────────────────────────────────────────────────┐
+    │ 2. ENGINEER CHANGE WINDOW                                 │  ◄───► [GNS3 Cisco Lab]
+    │    Manual CLI in GNS3 Console or Simulation (Clean/Fault) │        (R1 / R2 / R3)
+    └─────────────────────────────┬─────────────────────────────┘
+                                  │ [Engineer Confirms Done]
+                                  ▼
+    ┌───────────────────────────────────────────────────────────┐
+    │ 3. POST-CHECK & DIFF ENGINE                               │
+    │    Computes Exact Line Diffs & Health Comparison Matrix   │
+    └─────────────────────────────┬─────────────────────────────┘
+                                  │ [Deterministic Diffs]
+                                  ▼
+    ┌───────────────────────────────────────────────────────────┐
+    │ 4. LOCAL LLAMA 3.2 AI AUDITOR                             │
+    │    Audits Scope Compliance & Decides Sign-Off vs Rollback │
+    └─────────────────────────────┬─────────────────────────────┘
+                                  │
+                                  ▼
+    ┌───────────────────────────────────────────────────────────┐
+    │                    AUDIT DELIVERABLES                     │
+    │    • 3 Dashboard Panels (Matrix, Config Diff, AI Trace)   │
+    │    • Formatted 4-Tab Excel Workbook (.xlsx)               │
+    │    • Timestamped Markdown PIR Report (reports/pir_*.md)   │
+    └───────────────────────────────────────────────────────────┘
 ```
-
 ### Key Engineering Principles
 - **Anti-Hallucination Split Design:** Python deterministically handles all config diffing (`difflib`), BGP/OSPF parsing, and data-plane probing; **Llama 3.2** audits those verified deltas against the authorized MOP scope.
 - **Zero-Trust Read-Only Guardrails:** The AI agent has zero write tools. `guardrails.py` enforces a strict `show` / `ping` / `traceroute` prefix allowlist and regex-blocks `configure`, `reload`, `write`, and shell escapes.
