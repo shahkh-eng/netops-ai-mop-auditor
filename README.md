@@ -42,19 +42,21 @@ Over 70% of network outages occur during scheduled maintenance windows. Traditio
 
 ## System Architecture
 
+## System Architecture
+
 ```mermaid
 flowchart TB
-    Eng[Network Engineer / NOC Web UI<br/>Dark & Light Modes • Manual Confirmation] -->|1. Run Pre-Check| Flask[Flask Controller<br/>app.py]
-    Eng -->|2. Manual GNS3 CLI Edit or Simulation| Lab[(GNS3 Cisco IOS Lab<br/>R1 AS65001 ↔ R2-R3 AS65002)]
-    Eng -->|3. Confirm Changes → Post-Check| Flask
+    Eng["Network Engineer / NOC Web UI<br/>(Dark and Light Modes)"] -->|1. Run Pre-Check| Flask["Flask Controller<br/>(app.py)"]
+    Eng -->|2. Manual GNS3 CLI Edit or Simulation| Lab["GNS3 Cisco IOS Lab<br/>(R1 AS65001 - R2/R3 AS65002)"]
+    Eng -->|3. Confirm Changes - Post-Check| Flask
 
-    Flask --> Snap[Deterministic Engine<br/>tools.py: NAPALM + Netmiko + difflib]
-    Snap -->|Read-Only CLI| Guard[Zero-Trust Guardrails<br/>guardrails.py]
+    Flask --> Snap["Deterministic Engine<br/>tools.py: NAPALM + Netmiko + difflib"]
+    Snap -->|Read-Only CLI| Guard["Zero-Trust Guardrails<br/>(guardrails.py)"]
     Guard -->|OOB via GNS3 Hub1/Cloud1<br/>172.20.40.211-213| Lab
 
-    Snap -->|Pre/Post Matrix + Config Diff| AI[Llama 3.2 Change Auditor<br/>agent.py via Local Ollama]
+    Snap -->|Pre/Post Matrix + Config Diff| AI["Llama 3.2 Change Auditor<br/>agent.py via Local Ollama"]
     AI -->|Optional Read-Only Verify| Guard
-    AI -->|Verdict + PIR| Out[Exports:<br/>4-Tab Excel .xlsx & Markdown PIR]
+    AI -->|Verdict + PIR| Out["Exports:<br/>4-Tab Excel (.xlsx) and Markdown PIR"]
 ```
 
 ### Key Engineering Principles
