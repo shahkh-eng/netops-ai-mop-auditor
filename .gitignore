@@ -1,0 +1,19 @@
+# Python virtual environments & bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environment variables & local secrets
+.env
+
+# Runtime snapshots, pre-change router backups, and generated audit reports
+reports/*
+!reports/.gitkeep
+
+# IDE & OS artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
