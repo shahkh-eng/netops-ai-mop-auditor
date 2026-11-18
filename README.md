@@ -41,7 +41,9 @@ Over 70% of network outages occur during scheduled maintenance windows. Traditio
 ---
 ## System Architecture
 
-```text
+<div align="center">
+
+<pre>
 ┌───────────────────────────────────────────────────────────────────┐
 │                  4-STAGE MAINTENANCE LIFECYCLE                    │
 └─────────────────────────────────┬─────────────────────────────────┘
@@ -76,7 +78,10 @@ Over 70% of network outages occur during scheduled maintenance windows. Traditio
     │    • Formatted 4-Tab Excel Workbook (.xlsx)               │
     │    • Timestamped Markdown PIR Report (reports/pir_*.md)   │
     └───────────────────────────────────────────────────────────┘
-```
+</pre>
+
+</div>
+
 ### Key Engineering Principles
 - **Anti-Hallucination Split Design:** Python deterministically handles all config diffing (`difflib`), BGP/OSPF parsing, and data-plane probing; **Llama 3.2** audits those verified deltas against the authorized MOP scope.
 - **Zero-Trust Read-Only Guardrails:** The AI agent has zero write tools. `guardrails.py` enforces a strict `show` / `ping` / `traceroute` prefix allowlist and regex-blocks `configure`, `reload`, `write`, and shell escapes.
