@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>NetOps Maintenance Pre/Post Verification &amp; AI Auditor</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    // Apply saved theme before paint to avoid flash
+    (function () {
+      const saved = localStorage.getItem('netops_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+</head>
+<body>
+  <div class="container">
+    <!-- Top Header with Theme Switcher, Status Pill, and Excel Export -->
+    <header class="header">
+      <div class="brand">
+        <span class="status-dot"></span>
+        <div>
+          <h1>Maintenance Pre/Post Verification &amp; AI Change Auditor</h1>
+          <p class="subtitle">Cisco IOS GNS3 Lab (R1 AS 65001 ↔ R2–R3 AS 65002) • Local Llama 3.2 Auditor</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="btn-theme" onclick="toggleTheme()" title="Switch Light / Dark Mode">
+          ☀️ Light Mode
+        </button>
+        <div id="workflowBadge" class="badge badge-idle">Stage 1: Select Activity</div>
+        <button id="btnExportExcel" class="btn-excel" onclick="downloadExcel()" disabled
+          title="Complete Step 4 (Post-Check & AI Audit) to enable Excel export">
+          ⬇ Export Excel (.xlsx)
+        </button>
+      </div>
+    </header>
+
+    <!-- 4-Step Sequential Workflow Controls -->
+    <section class="workflow-grid">
+      <!-- STEP 1 -->
+      <div class="step-box" id="box-step1">
+        <div class="step-title"><span class="step-num">1</span> Select Maintenance Scenario</div>
+        <select id="mopSelect" onchange="onScenarioChange()">
+          {% for id, mop in scenarios.items() %}
+            <option value="{{ id }}" data-scope="{{ mop.authorized_scope }}" data-manual="{{ 'true' if not mop.clean_change else 'false' }}">
+              {{ mop.title }}
+            </option>
+          {% endfor %}
+        </select>
+        <label class="field-label">Authorized Change Scope (Audited by AI):</label>
+        <textarea id="scopeInput" rows="3"></textarea>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-box" id="box-step2">
+        <div class="step-title"><span class="step-num">2</span> Pre-Activity Baseline</div>
+        <p class="box-desc">Capture Running-Configs, OSPF, BGP prefixes, MTU policy &amp; end-to-end pings across R1, R2, R3.</p>
+        <button id="btnPre" class="btn btn-blue" onclick="runPreSnapshot()">Run Pre-Checks (PRE Snapshot)</button>
+        <div id="preStatus" class="status-box">Waiting for Pre-Snapshot...</div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-box disabled-box" id="box-step3">
+        <div class="step-title"><span class="step-num">3</span> Cleared for Engineer Activity</div>
+        <div id="clearanceBanner" class="clearance-locked">Locked until Pre-Check completes.</div>
+        <div id="simButtons" class="btn-row">
+          <button id="btnSimClean" class="btn btn-green-outline" onclick="simulateChange('clean')" disabled>Simulate Clean Change</button>
+          <button id="btnSimBroken" class="btn btn-red-outline" onclick="simulateChange('broken')" disabled>Simulate Misconfiguration</button>
+        </div>
+        <div id="changeStatus" class="status-box">Or perform changes manually in GNS3 console.</div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step-box disabled-box" id="box-step4">
+        <div class="step-title"><span class="step-num">4</span> Engineer Confirmation &amp; Audit</div>
+        <p class="box-desc">Confirm your activity is finished to capture Post-Snapshot, diff Pre vs. Post, and generate AI Verdict.</p>
+        <button id="btnConfirmPost" class="btn btn-amber" onclick="confirmAndAudit()" disabled>
+          Confirm Changes Done → Run Post-Check &amp; AI Audit
+        </button>
+        <button id="btnRollback" class="btn btn-red hidden" onclick="triggerRollback()">
+          Rollback Simulated Change to Baseline
+        </button>
+      </div>
+    </section>
+
+    <!-- Live Banner -->
+    <div id="liveBanner" class="live-banner banner-idle">
+      <span class="banner-dot"></span>
+      <span id="liveText">Select a Maintenance Activity (MOP) and run Step 2 Pre-Checks to begin.</span>
+    </div>
+
+    <!-- Main 3-Panel Inspection Area -->
+    <section class="results-grid">
+      <!-- Panel 1: Deterministic Pre vs Post Matrix -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Pre vs. Post Comparison Matrix</h2>
+          <span id="matrixBadge" class="badge badge-neutral">Pending</span>
+        </div>
+        <div class="panel-body">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>Check Item</th>
+                <th>PRE</th>
+                <th>POST</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="matrixBody">
+              <tr><td colspan="4" class="empty-cell">Run Pre-Check and Post-Check to populate deterministic comparison.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Panel 2: Exact Unified Config Diff -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Configuration Diff (PRE vs. POST)</h2>
+          <span id="diffBadge" class="badge badge-neutral">0 Routers Changed</span>
+        </div>
+        <div id="diffViewer" class="panel-body">
+          <div class="empty-cell">Exact line-by-line configuration additions (+) and removals (-) will appear here.</div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Llama 3.2 Agentic AI Audit & Final Verdict -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Llama 3.2 Audit Trace &amp; Verdict</h2>
+          <span id="verdictBadge" class="badge badge-neutral">Awaiting Audit</span>
+        </div>
+        <div id="aiPanel" class="panel-body">
+          <div class="empty-cell">AI Auditor reasoning, optional live verification calls, and final Sign-Off / Reject verdict will stream here.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const mopSelect = document.getElementById('mopSelect');
+    const scopeInput = document.getElementById('scopeInput');
+    const workflowBadge = document.getElementById('workflowBadge');
+    const liveBanner = document.getElementById('liveBanner');
+    const liveText = document.getElementById('liveText');
+    const btnExportExcel = document.getElementById('btnExportExcel');
+    const themeToggle = document.getElementById('themeToggle');
+
+    // Sync theme toggle button text on initial load
+    function syncThemeButton() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      themeToggle.innerText = current === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('netops_theme', next);
+      syncThemeButton();
+    }
+    syncThemeButton();
+
+    function setBanner(type, text) {
+      liveBanner.className = `live-banner banner-${type}`;
+      liveText.innerText = text;
+    }
+
+    function onScenarioChange() {
+      const opt = mopSelect.options[mopSelect.selectedIndex];
+      scopeInput.value = opt.getAttribute('data-scope');
+      const isManual = opt.getAttribute('data-manual') === 'true';
+      document.getElementById('simButtons').style.display = isManual ? 'none' : 'flex';
+    }
+    onScenarioChange();
+
+    function runPreSnapshot() {
+      document.getElementById('btnPre').disabled = true;
+      btnExportExcel.disabled = true;
+      setBanner('thinking', 'Capturing PRE_ACTIVITY golden baseline across R1, R2, and R3 (configs, OSPF, BGP, MTU, pings)...');
+      document.getElementById('preStatus').innerText = "Running Pre-Checks...";
+
+      fetch('/api/pre-snapshot', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('btnPre').disabled = false;
+          if (!data.ok) {
+            setBanner('error', `Pre-Check failed: ${data.error}`);
+            document.getElementById('preStatus').innerText = data.error;
+            return;
+          }
+
+          document.getElementById('preStatus').innerHTML =
+            `<strong class="text-success">PRE Captured</strong> • ${data.summary.mtu_policy}<br>1500B Ping: ${data.summary.ping_1500}`;
+
+          // Clear engineer to make changes (Unlock Steps 3 & 4)
+          document.getElementById('box-step3').classList.remove('disabled-box');
+          document.getElementById('box-step4').classList.remove('disabled-box');
+          const clearance = document.getElementById('clearanceBanner');
+          clearance.className = 'clearance-ok';
+          clearance.innerText = 'CLEARED: Engineer may now execute changes in GNS3 or simulate below.';
+
+          document.getElementById('btnSimClean').disabled = false;
+          document.getElementById('btnSimBroken').disabled = false;
+          document.getElementById('btnConfirmPost').disabled = false;
+
+          workflowBadge.className = 'badge badge-blue';
+          workflowBadge.innerText = 'Stage 3: Cleared for Change';
+          setBanner('pass', 'PRE-CHECK PASSED! Engineer is cleared to perform maintenance changes, then click Step 4 confirmation.');
+        });
+    }
+
+    function simulateChange(mode) {
+      const mopId = mopSelect.value;
+      const btnConfirm = document.getElementById('btnConfirmPost');
+      const btnClean = document.getElementById('btnSimClean');
+      const btnBroken = document.getElementById('btnSimBroken');
+
+      // Prevent clicking Step 4 while simulated change is still pushing over Telnet/SSH
+      btnConfirm.disabled = true;
+      btnClean.disabled = true;
+      btnBroken.disabled = true;
+      btnExportExcel.disabled = true;
+      setBanner('acting', `Applying ${mode} maintenance simulation to GNS3 router...`);
+
+      fetch('/api/simulate-change', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ mop_id: mopId, mode: mode })
+      })
+      .then(r => r.json())
+      .then(data => {
+        btnClean.disabled = false;
+        btnBroken.disabled = false;
+        btnConfirm.disabled = false;
+
+        if (data.ok) {
+          document.getElementById('changeStatus').innerText = data.summary;
+          workflowBadge.className = 'badge badge-amber';
+          workflowBadge.innerText = 'Stage 4: Awaiting Confirmation';
+          setBanner('acting', `Change applied on ${data.router}. Click Step 4 Confirmation Button to run Post-Check & AI Audit.`);
+        } else {
+          setBanner('error', data.error);
+        }
+      });
+    }
+
+    function confirmAndAudit() {
+      const btn = document.getElementById('btnConfirmPost');
+      btn.disabled = true;
+      btnExportExcel.disabled = true;
+      document.getElementById('btnRollback').classList.add('hidden');
+      workflowBadge.className = 'badge badge-amber';
+      workflowBadge.innerText = 'Stage 4: Running Post-Checks...';
+      setBanner('acting', 'Engineer confirmed completion. Capturing POST_ACTIVITY snapshot & computing Pre/Post diffs...');
+
+      fetch('/api/post-snapshot-diff', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          if (!data.ok) {
+            btn.disabled = false;
+            setBanner('error', data.error);
+            return;
+          }
+
+          renderMatrix(data.comparison);
+          renderDiffs(data.comparison);
+          startAIAuditStream();
+        });
+    }
+
+    function renderMatrix(comp) {
+      const tbody = document.getElementById('matrixBody');
+      tbody.innerHTML = "";
+      comp.matrix.forEach(row => {
+        const tr = document.createElement('tr');
+        let stClass = 'st-pass';
+        if (row.status === 'REGRESSION') stClass = 'st-fail';
+        else if (row.status === 'CHANGED' || row.status === 'IMPROVED') stClass = 'st-changed';
+
+        tr.innerHTML = `
+          <td><strong>${row.category}</strong>: ${row.check}</td>
+          <td class="mono">${row.pre}</td>
+          <td class="mono">${row.post}</td>
+          <td><span class="status-pill ${stClass}">${row.status}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const badge = document.getElementById('matrixBadge');
+      if (comp.has_regression) {
+        badge.className = 'badge badge-red';
+        badge.innerText = `${comp.regressions.length} Regression(s)`;
+      } else {
+        badge.className = 'badge badge-green';
+        badge.innerText = 'Zero Regressions';
+      }
+    }
+
+    function renderDiffs(comp) {
+      const viewer = document.getElementById('diffViewer');
+      const badge = document.getElementById('diffBadge');
+      const changed = comp.changed_routers || [];
+      badge.innerText = `${changed.length} Router(s) Modified`;
+      badge.className = changed.length > 0 ? 'badge badge-amber' : 'badge badge-neutral';
+
+      if (changed.length === 0) {
+        viewer.innerHTML = '<div class="empty-cell">No configuration changes detected between PRE and POST snapshots.</div>';
+        return;
+      }
+
+      viewer.innerHTML = "";
+      changed.forEach(r => {
+        const block = document.createElement('div');
+        block.className = 'diff-block';
+        const lines = comp.config_diffs[r].split('\n').map(line => {
+          if (line.startsWith('+') && !line.startsWith('+++')) return `<div class="diff-add">${escapeHtml(line)}</div>`;
+          if (line.startsWith('-') && !line.startsWith('---')) return `<div class="diff-del">${escapeHtml(line)}</div>`;
+          return `<div class="diff-ctx">${escapeHtml(line)}</div>`;
+        }).join('');
+        block.innerHTML = `<div class="diff-header">${r} Running-Config Diff</div><div class="diff-code">${lines}</div>`;
+        viewer.appendChild(block);
+      });
+    }
+
+    function startAIAuditStream() {
+      const mopId = encodeURIComponent(mopSelect.value);
+      const scope = encodeURIComponent(scopeInput.value);
+      const aiPanel = document.getElementById('aiPanel');
+      const verdictBadge = document.getElementById('verdictBadge');
+
+      aiPanel.innerHTML = "";
+      verdictBadge.className = 'badge badge-blue';
+      verdictBadge.innerText = 'AI Auditing...';
+
+      const es = new EventSource(`/api/audit-stream?mop_id=${mopId}&scope=${scope}`);
+
+      es.onmessage = (e) => {
+        const ev = JSON.parse(e.data);
+
+        if (ev.event === 'audit_start' || ev.event === 'ai_thinking') {
+          setBanner('thinking', ev.message);
+        } else if (ev.event === 'ai_tool_call') {
+          const card = document.createElement('div');
+          card.className = 'ai-card ai-tool';
+          card.innerHTML = `<strong>Step ${ev.step} • Extra Verification: <code>${ev.tool}</code></strong>
+                            <pre>${JSON.stringify(ev.args, null, 2)}</pre>`;
+          aiPanel.appendChild(card);
+        } else if (ev.event === 'ai_tool_result') {
+          const card = document.createElement('div');
+          card.className = 'ai-card ai-obs';
+          card.innerHTML = `<details><summary>Observation from ${ev.tool}</summary><pre>${ev.result}</pre></details>`;
+          aiPanel.appendChild(card);
+        } else if (ev.event === 'audit_verdict') {
+          const card = document.createElement('div');
+          card.className = ev.passed ? 'verdict-box verdict-pass' : 'verdict-box verdict-fail';
+          card.innerHTML = `
+            <div class="verdict-title">${ev.passed ? 'VERDICT: APPROVED FOR SIGN-OFF' : 'VERDICT: REJECTED — ISSUES DETECTED'}</div>
+            <div class="report-ref">Saved PIR Report: <code>${ev.report_file}</code></div>
+            <pre class="verdict-body">${escapeHtml(ev.verdict)}</pre>
+          `;
+          aiPanel.appendChild(card);
+
+          verdictBadge.className = ev.passed ? 'badge badge-green' : 'badge badge-red';
+          verdictBadge.innerText = ev.passed ? 'PASSED' : 'REJECTED';
+          workflowBadge.className = ev.passed ? 'badge badge-green' : 'badge badge-red';
+          workflowBadge.innerText = ev.passed ? 'MOP Signed Off' : 'Rollback Recommended';
+
+          setBanner(ev.passed ? 'pass' : 'error', ev.passed
+            ? 'POST-CHECK & AI AUDIT PASSED! Activity verified with zero regressions.'
+            : 'POST-CHECK FAILED! Missing/broken/misconfigured behavior detected. Review verdict & rollback.');
+
+          if (!ev.passed) {
+            document.getElementById('btnRollback').classList.remove('hidden');
+          }
+          // Enable top-right Excel export button now that Post-Check & AI Verdict are ready
+          btnExportExcel.disabled = false;
+          document.getElementById('btnConfirmPost').disabled = false;
+          es.close();
+        } else if (ev.event === 'error') {
+          setBanner('error', ev.message);
+          document.getElementById('btnConfirmPost').disabled = false;
+          es.close();
+        }
+      };
+
+      es.onerror = () => {
+        document.getElementById('btnConfirmPost').disabled = false;
+        es.close();
+      };
+    }
+
+    function downloadExcel() {
+      const origText = btnExportExcel.innerText;
+      btnExportExcel.disabled = true;
+      btnExportExcel.innerText = '⏳ Building Workbook...';
+      window.location.href = '/api/export-excel';
+      setTimeout(() => {
+        btnExportExcel.disabled = false;
+        btnExportExcel.innerText = origText;
+      }, 1500);
+    }
+
+    function triggerRollback() {
+      setBanner('acting', 'Rolling back router to clean Pre-Maintenance baseline...');
+      fetch('/api/rollback', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            setBanner('pass', `${data.status} Click Step 4 again to verify recovery.`);
+            document.getElementById('btnRollback').classList.add('hidden');
+          } else {
+            setBanner('error', data.error);
+          }
+        });
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>
