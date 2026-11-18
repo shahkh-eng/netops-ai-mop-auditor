@@ -40,7 +40,6 @@ Over 70% of network outages occur during scheduled maintenance windows. Traditio
 
 ---
 ## System Architecture
-
 ```mermaid
 flowchart TD
     A["Network Engineer / NOC UI"] -->|"1. Pre-Check"| B["Flask Controller (app.py)"]
