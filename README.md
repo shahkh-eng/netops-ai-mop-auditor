@@ -39,22 +39,21 @@ Over 70% of network outages occur during scheduled maintenance windows. Traditio
 4. **Manual Confirmation → Post-Check, AI Verdict & Export:** Upon engineer confirmation, captures `POST_ACTIVITY`, builds a deterministic **Pre vs. Post Comparison Matrix** and **Unified Config Diff**, and invokes a **local Llama 3.2 Change Auditor** to issue an **APPROVED (Sign-Off)** or **REJECTED (Rollback Required)** verdict—with one-click export to a **4-sheet Excel (`.xlsx`) workbook** and a **Markdown PIR report**, displayed in a **Dark / Light Mode** web UI.
 
 ---
-
 ## System Architecture
 
 ```mermaid
-graph TD
-    A[Network Engineer / NOC UI] -->|1. Run Pre-Check| B[Flask Controller]
-    A -->|2. Manual GNS3 Edit or Simulation| C[GNS3 Cisco IOS Lab]
-    A -->|3. Confirm Changes - Post-Check| B
+flowchart TD
+    A["Network Engineer / NOC UI"] -->|"1. Pre-Check"| B["Flask Controller (app.py)"]
+    A -->|"2. Manual GNS3 Edit or Simulation"| C["GNS3 Cisco IOS Lab"]
+    A -->|"3. Confirm Changes"| B
 
-    B --> D[Deterministic Engine: NAPALM / Netmiko]
-    D -->|Read-Only CLI| E[Zero-Trust Guardrails]
-    E -->|OOB Mgmt 172.20.40.0/24| C
+    B --> D["Deterministic Engine (NAPALM / Netmiko)"]
+    D -->|"Read-Only CLI"| E["Zero-Trust Guardrails"]
+    E -->|"OOB Management 172.20.40.0/24"| C
 
-    D -->|Diffs and Telemetry| F[Local Llama 3.2 Auditor]
-    F -->|Optional Read-Only Verify| E
-    F -->|Verdict and Sign-Off| G[Excel .xlsx and Markdown PIR]
+    D -->|"Diffs and Telemetry"| F["Local Llama 3.2 Auditor"]
+    F -->|"Optional Live Verify"| E
+    F -->|"Verdict and Sign-Off"| G["Excel .xlsx and Markdown PIR"]
 ```
 
 ### Key Engineering Principles
