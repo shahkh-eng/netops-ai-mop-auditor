@@ -40,19 +40,20 @@ Over 70% of network outages occur during scheduled maintenance windows. Traditio
 
 ---
 ## System Architecture
+
 ```mermaid
 flowchart TD
-    A["Network Engineer / NOC UI"] -->|"1. Pre-Check"| B["Flask Controller (app.py)"]
-    A -->|"2. Manual GNS3 Edit or Simulation"| C["GNS3 Cisco IOS Lab"]
-    A -->|"3. Confirm Changes"| B
+    A[Network Engineer / NOC UI] -->|1. Pre-Check| B[Flask Controller app.py]
+    A -->|2. Manual GNS3 Edit or Simulation| C[GNS3 Cisco IOS Lab]
+    A -->|3. Confirm Changes| B
 
-    B --> D["Deterministic Engine (NAPALM / Netmiko)"]
-    D -->|"Read-Only CLI"| E["Zero-Trust Guardrails"]
-    E -->|"OOB Management 172.20.40.0/24"| C
+    B --> D[Deterministic Engine: NAPALM and Netmiko]
+    D -->|Read-Only CLI| E[Zero-Trust Guardrails]
+    E -->|OOB Management Subnet| C
 
-    D -->|"Diffs and Telemetry"| F["Local Llama 3.2 Auditor"]
-    F -->|"Optional Live Verify"| E
-    F -->|"Verdict and Sign-Off"| G["Excel .xlsx and Markdown PIR"]
+    D -->|Diffs and Telemetry| F[Local Llama 3.2 Auditor]
+    F -->|Optional Live Verify| E
+    F -->|Verdict and Sign-Off| G[Excel xlsx and Markdown PIR]
 ```
 
 ### Key Engineering Principles
