@@ -24,7 +24,7 @@ If you are reproducing this lab from scratch—or want to follow the progression
 | **3. Secure CLI** | SSH Automation with **Netmiko** | [Network Automation: GNS3 Lab - SSH to a Cisco Router using Netmiko](https://www.linkedin.com/pulse/network-automation-gns3-lab-ssh-cisco-router-using-netmiko-javed) |
 | **4. State & Config** | Structured Management with **NAPALM** | [Network Automation: GNS3 Lab - Configure a Cisco Router using NAPALM](https://www.linkedin.com/pulse/network-automation-gns3-lab-configure-cisco-router-using-javed) |
 | **5. Web UI** | Inventory & Telemetry via **Nornir + Flask** | [Network Automation: Retrieve Device Facts & Interface Details using Nornir and Display on Webpage via Flask](https://www.linkedin.com/pulse/network-automation-retrieve-devices-facts-interface-details-javed) |
-| **6. This Repo** | **AIOps Pre/Post Verification & Local Llama 3.2** | *Autonomous MOP Auditing, Deterministic Diffs & Guardrailed Sign-Off (`netops-ai-mop-auditor`)* |
+| **6. This Repo** | **AIOps Pre/Post Verification & Local Llama 3.2** | *Autonomous MOP Auditing, Deterministic Diffs & Guardrailed Sign-Off* — [Read on Dev.to](https://dev.to/kj121/beyond-chatbots-building-a-zero-trust-aiops-change-auditor-for-cisco-networks-with-local-llms-1ffb) |
 
 ---
 
